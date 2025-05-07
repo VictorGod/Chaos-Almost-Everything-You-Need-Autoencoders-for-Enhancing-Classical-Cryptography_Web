@@ -7,6 +7,8 @@ from app.models import User
 from app.utils.auth import hash_password, verify_password, create_access_token, decode_access_token
 from app.config import Config
 from app.schemas import RegisterRequest, LoginRequest, Token
+import jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 # При старте создаём таблицы
 User.metadata.create_all(bind=engine)

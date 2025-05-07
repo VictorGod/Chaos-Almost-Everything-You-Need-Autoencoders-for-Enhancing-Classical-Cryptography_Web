@@ -1,48 +1,56 @@
-import time
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from app.crypto.core.math_utils import shannon_entropy
-
+import os
+import base64
+from typing import Tuple, Dict
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding as sym_padding
+from cryptography.hazmat.backends import default_backend
 
 class PythonEncryption:
-    """
-    Реализация AES-CBC шифрования/дешифрования с замером времени и
-    энтропии результата.
-    """
-
     def __init__(self, key: bytes):
+        # Ожидаем ключ ровно 32 байта для AES-256
         self.key = key
 
-    def encrypt(self, data: bytes) -> (bytes, float, float):
+    def encrypt(self, plaintext: bytes) -> Tuple[bytes, Dict[str, str]]:
         """
-        Шифрует data, возвращает:
-         - ciphertext (iv + ct)
-         - время выполнения в миллисекундах
-         - энтропию ciphertext
+        Шифрует AES-256-CBC:
+        - plaintext: сырые байты
+        Возвращает:
+        - ciphertext: сырые байты шифротекста
+        - metadata: словарь с base64-строкой IV
         """
-        # В prod-окружении iv лучше os.urandom(AES.block_size)
-        iv = AES.block_size * b'\x00'
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        iv = os.urandom(16)
+        padder = sym_padding.PKCS7(128).padder()
+        padded = padder.update(plaintext) + padder.finalize()
 
-        start = time.perf_counter()
-        ct = cipher.encrypt(pad(data, AES.block_size))
-        elapsed_ms = (time.perf_counter() - start) * 1000
+        cipher = Cipher(
+            algorithms.AES(self.key),
+            modes.CBC(iv),
+            backend=default_backend()
+        )
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(padded) + encryptor.finalize()
 
-        ent = shannon_entropy(iv + ct)
-        return iv + ct, elapsed_ms, ent
+        return ciphertext, {"iv": base64.b64encode(iv).decode("utf-8")}
 
-    def decrypt(self, ciphertext: bytes) -> (bytes, float):
+    def decrypt(self, ciphertext: bytes, metadata: Dict[str, str]) -> Tuple[bytes, Dict[str, str]]:
         """
-        Дешифрует ciphertext, возвращает:
-         - расшифрованные данные
-         - время выполнения в миллисекундах
+        Дешифрует AES-256-CBC:
+        - ciphertext: сырые байты шифротекста
+        - metadata: словарь, где metadata["iv"] = base64-строка IV
+        Возвращает:
+        - plaintext: сырые байты без паддинга
+        - metadata обратно (можно переиспользовать)
         """
-        iv = ciphertext[:AES.block_size]
-        ct = ciphertext[AES.block_size:]
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        iv = base64.b64decode(metadata["iv"])
+        cipher = Cipher(
+            algorithms.AES(self.key),
+            modes.CBC(iv),
+            backend=default_backend()
+        )
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(ciphertext) + decryptor.finalize()
 
-        start = time.perf_counter()
-        pt = unpad(cipher.decrypt(ct), AES.block_size)
-        elapsed_ms = (time.perf_counter() - start) * 1000
+        unpadder = sym_padding.PKCS7(128).unpadder()
+        plaintext = unpadder.update(padded) + unpadder.finalize()
 
-        return pt, elapsed_ms
+        return plaintext, metadata
