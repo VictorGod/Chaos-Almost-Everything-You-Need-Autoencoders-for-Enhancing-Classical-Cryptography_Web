@@ -21,7 +21,7 @@ class EncryptResponse(BaseModel):
 class DecryptRequest(BaseModel):
     key_id: str
     ciphertext: str
-    metadata: Dict[str, str]  
+    metadata: Dict[str, str]
 
 class DecryptResponse(BaseModel):
     plaintext: str
@@ -47,12 +47,27 @@ class ConfigUpdate(BaseModel):
 # --- RSA / Chaos-RSA ---
 
 class RSAKeyOut(BaseModel):
+    key_id: str  
     private_key_pem: str
     public_key_pem: str
     entropy: bytes
     timestamp: datetime
 
+    class Config:
+        json_encoders = {
+            bytes: lambda b: b.hex(),
+            datetime: lambda dt: dt.isoformat(),
+        }
+
+class RSAEncryptRequest(BaseModel):
+    key_id: str
+    data: str
+
+class RSAEncryptResponse(BaseModel):
+    ciphertext_asn1_hex: str
+
 class RSADecryptRequest(BaseModel):
+    key_id: str   
     ciphertext_asn1_hex: str
 
 class RSADecryptResponse(BaseModel):
@@ -81,6 +96,6 @@ class Token(BaseModel):
 
 class RSAKeyResponse(BaseModel):
     private_key: str   # PEM в виде строки
-    public_key:  str   # PEM в виде строки
-    entropy:     str   # system_entropy.hex()
-    timestamp:   str   # timestamp.decode('utf-8')
+    public_key: str    # PEM в виде строки
+    entropy: str       # system_entropy.hex()
+    timestamp: str     # timestamp.decode('utf-8')
