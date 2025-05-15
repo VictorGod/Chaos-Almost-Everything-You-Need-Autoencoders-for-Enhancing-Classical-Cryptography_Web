@@ -21,5 +21,4 @@
 
 - **Документация кода:**  
 
-  В исходном коде содержатся подробные комментарии, описывающие функциональные блоки и алгоритмические решения. 
-# Chaos-Almost-Everything-You-Need-Autoencoders-for-Enhancing-Classical-Cryptography
+[# Chaos-Almost-Everything-You-Need-Autoencoders-for-Enhancing-Classical-Cryptography](https://github.com/VictorGod/Chaos-Almost-Everything-You-Need-Autoencoders-for-Enhancing-Classical-Cryptography)
